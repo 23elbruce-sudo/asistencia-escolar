@@ -13,7 +13,7 @@ export default function ActivarDispositivoPage() {
 
   const handleActivate = async () => {
     if (code.trim().length < 6) {
-      setError("Ingresa el código de 6 caracteres");
+      setError("Ingresa la clave de activación");
       return;
     }
 
@@ -93,7 +93,7 @@ export default function ActivarDispositivoPage() {
               Código de activación
             </h2>
             <p className="text-sm text-slate-500 mb-6 text-center">
-              Pide al administrador el código QR o el código de 6 caracteres
+              Pide al administrador la clave de activación de 6 caracteres
               para vincular este dispositivo.
             </p>
 
