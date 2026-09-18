@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Botones de asistencia grandes y fáciles de tocar */
+.attendance-btn {
+  @apply flex-1 py-3 px-2 rounded-xl font-semibold text-sm transition-all duration-150 active:scale-95;
+}
+
+.attendance-btn-present {
+  @apply bg-success-100 text-success-700 border-2 border-success-500;
+}
+
+.attendance-btn-absent {
+  @apply bg-danger-100 text-danger-700 border-2 border-danger-500;
+}
+
+.attendance-btn-late {
+  @apply bg-warning-100 text-warning-600 border-2 border-warning-500;
+}
+
+.attendance-btn-inactive {
+  @apply bg-slate-100 text-slate-400 border-2 border-slate-200;
+}
