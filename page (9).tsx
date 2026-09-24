@@ -141,7 +141,7 @@ export default function ReportesPage() {
           <div className="p-6 md:p-8" id="report-content">
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-slate-800">
-                Colegio Cristóbal de las Américas
+                CCA Asistencia Escolar
               </h2>
               <p className="text-sm text-slate-500 mt-1">
                 Reporte de Asistencia {config.type === "semanal" ? "Semanal" : "Mensual"}
@@ -197,7 +197,7 @@ export default function ReportesPage() {
             </table>
 
             <p className="text-xs text-slate-400 text-center mt-6">
-              Generado el {new Date().toLocaleDateString("es-MX")} · Sistema de Asistencia Escolar
+              Generado el {new Date().toLocaleDateString("es-MX")} · CCA Asistencia Escolar
             </p>
           </div>
         </div>

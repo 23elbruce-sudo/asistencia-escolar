@@ -30,9 +30,9 @@ export default function AdminLayout({
       {/* Sidebar - escritorio */}
       <aside className="hidden md:flex md:w-64 bg-primary-900 text-white flex-col">
         <div className="p-5 border-b border-primary-700">
-          <h1 className="font-bold text-lg leading-tight">Asistencia Escolar</h1>
+          <h1 className="font-bold text-lg leading-tight">CCA Asistencia Escolar</h1>
           <p className="text-primary-300 text-xs mt-1">
-            Colegio Cristóbal de las Américas
+            CCA
           </p>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -72,7 +72,7 @@ export default function AdminLayout({
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h1 className="font-bold text-base">Panel Admin</h1>
-            <p className="text-primary-300 text-xs">Cristóbal de las Américas</p>
+            <p className="text-primary-300 text-xs">CCA</p>
           </div>
           <button
             onClick={() => setMenuOpen(!menuOpen)}

@@ -113,7 +113,7 @@ export default function DocentePage() {
         <header className="bg-primary-800 text-white px-4 py-4">
           <div className="max-w-2xl mx-auto">
             <p className="text-primary-200 text-sm">{teacherName}</p>
-            <h1 className="font-bold text-lg">Asistencia Escolar</h1>
+            <h1 className="font-bold text-lg">CCA Asistencia Escolar</h1>
           </div>
         </header>
         <main className="flex-1 flex items-center justify-center p-6">

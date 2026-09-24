@@ -60,7 +60,7 @@ export default function AdminDashboard() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Panel de administración</h1>
         <p className="text-slate-500 mt-1">
-          Supervisión y gestión del Colegio Cristóbal de las Américas
+          Supervisión y gestión del CCA
         </p>
       </div>
 

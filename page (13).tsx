@@ -31,13 +31,13 @@ export default function HomePage() {
         {/* Logo / Título */}
         <div className="mb-10">
           <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-3xl font-bold text-primary-800">CA</span>
+            <span className="text-2xl font-bold text-primary-800">CCA</span>
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">
-            Asistencia Escolar
+            CCA Asistencia Escolar
           </h1>
           <p className="text-primary-200 text-sm">
-            Colegio Cristóbal de las Américas
+            Sistema de asistencia
           </p>
         </div>
 

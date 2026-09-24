@@ -1,4 +1,4 @@
-# Asistencia Escolar – Colegio Cristóbal de las Américas
+# CCA Asistencia Escolar
 
 Demo de la aplicación web (PWA) de asistencia.
 

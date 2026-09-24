@@ -1,7 +1,7 @@
 {
-  "name": "Asistencia Escolar – Colegio Cristóbal de las Américas",
-  "short_name": "Asistencia CA",
-  "description": "Sistema de asistencia en tiempo real",
+  "name": "CCA Asistencia Escolar",
+  "short_name": "CCA Asistencia",
+  "description": "Sistema de asistencia escolar",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e40af",

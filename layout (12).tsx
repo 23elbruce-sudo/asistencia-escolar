@@ -2,14 +2,14 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Asistencia Escolar – Colegio Cristóbal de las Américas",
+  title: "CCA Asistencia Escolar",
   description:
-    "Sistema de asistencia en tiempo real para el Colegio Cristóbal de las Américas",
+    "Sistema de asistencia escolar – CCA",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Asistencia Escolar",
+    title: "CCA Asistencia",
   },
 };
 
