@@ -1,39 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
-type Teacher = {
+type Device = {
   id: string;
-  code: string;
-  name: string;
-  devices: number;
-  active: boolean;
+  teacher: string;
+  deviceName: string;
+  activatedAt: string;
+  lastSeen: string;
 };
 
-const INITIAL: Teacher[] = [
-  { id: "1", code: "DOC001", name: "Javier Sánchez González", devices: 1, active: true },
-  { id: "2", code: "DOC002", name: "María López Hernández", devices: 1, active: true },
-  { id: "3", code: "DOC003", name: "Roberto Hernández Díaz", devices: 0, active: true },
-  { id: "4", code: "DOC004", name: "Ana Ruiz Morales", devices: 1, active: true },
-  { id: "5", code: "DOC005", name: "Carlos Méndez Soto", devices: 1, active: true },
-  { id: "6", code: "DOC006", name: "Patricia Gómez Vargas", devices: 0, active: true },
-  { id: "7", code: "DOC007", name: "Luis Fernando Torres", devices: 1, active: true },
-  { id: "8", code: "DOC008", name: "Elena Ramírez Cruz", devices: 0, active: false },
-  { id: "9", code: "DOC009", name: "Miguel Ángel Castillo", devices: 1, active: true },
-  { id: "10", code: "DOC010", name: "Sofía Herrera Luna", devices: 1, active: true },
-  { id: "11", code: "DOC011", name: "Diego Morales Peña", devices: 0, active: true },
-  { id: "12", code: "DOC012", name: "Carmen Núñez Ortiz", devices: 1, active: true },
-  { id: "13", code: "DOC013", name: "Andrés Vargas Ríos", devices: 1, active: true },
+type ActivationKey = {
+  key: string;
+  teacher: string;
+  expiresAt: string;
+};
+
+const DEMO_DEVICES: Device[] = [
+  { id: "1", teacher: "Javier Sánchez González", deviceName: "Teléfono de Javier", activatedAt: "2026-09-01", lastSeen: "Hoy 07:12" },
+  { id: "2", teacher: "María López Hernández", deviceName: "Teléfono de María", activatedAt: "2026-09-02", lastSeen: "Hoy 07:05" },
+  { id: "3", teacher: "Ana Ruiz Morales", deviceName: "Tablet Ana", activatedAt: "2026-09-03", lastSeen: "Ayer 14:40" },
 ];
 
-export default function DocentesPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newCode, setNewCode] = useState("");
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
+const TEACHERS_WITHOUT = [
+  "Roberto Hernández Díaz",
+  "Patricia Gómez Vargas",
+  "Elena Ramírez Cruz",
+  "Diego Morales Peña",
+  "Carlos Méndez Soto",
+];
+
+function makeKey() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let k = "";
+  for (let i = 0; i < 6; i++) k += chars[Math.floor(Math.random() * chars.length)];
+  return k;
+}
+
+export default function DispositivosPage() {
+  const [devices, setDevices] = useState(DEMO_DEVICES);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState("");
+  const [customKey, setCustomKey] = useState("");
+  const [generated, setGenerated] = useState<ActivationKey | null>(null);
   const [message, setMessage] = useState("");
 
   const flash = (msg: string) => {
@@ -41,82 +50,58 @@ export default function DocentesPage() {
     setTimeout(() => setMessage(""), 2500);
   };
 
-  const removeTeacher = (id: string, name: string) => {
-    if (!confirm(`¿Eliminar a ${name}? (solo en esta demo; al recargar vuelve a aparecer)`)) return;
-    setTeachers((prev) => prev.filter((t) => t.id !== id));
-    flash("Docente eliminado de la lista (demo)");
+  const openGenerate = () => {
+    setSelectedTeacher("");
+    setCustomKey("");
+    setGenerated(null);
+    setShowGenerate(true);
   };
 
-  const toggleActive = (id: string) => {
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t))
-    );
-    flash("Estado actualizado (demo)");
-  };
-
-  const unlinkDevice = (id: string) => {
-    if (!confirm("¿Desvincular el dispositivo de este docente?")) return;
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, devices: 0 } : t))
-    );
-    flash("Dispositivo desvinculado (demo)");
-  };
-
-  const addTeacher = () => {
-    if (!newName.trim()) {
-      alert("Escribe el nombre del docente");
+  const generate = () => {
+    if (!selectedTeacher) {
+      alert("Elige un docente");
       return;
     }
-    const code = newCode.trim() || `DOC${String(teachers.length + 1).padStart(3, "0")}`;
-    setTeachers((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        code,
-        name: newName.trim(),
-        devices: 0,
-        active: true,
-      },
-    ]);
-    setNewName("");
-    setNewCode("");
-    setShowAdd(false);
-    flash("Docente agregado (demo)");
+    const key = customKey.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || makeKey();
+    if (key.length < 4) {
+      alert("La clave debe tener al menos 4 caracteres");
+      return;
+    }
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 30);
+    setGenerated({
+      key,
+      teacher: selectedTeacher,
+      expiresAt: expires.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
+    });
   };
 
-  const saveEdit = () => {
-    if (!editId || !editName.trim()) return;
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === editId ? { ...t, name: editName.trim() } : t))
-    );
-    setEditId(null);
-    flash("Nombre actualizado (demo)");
+  const copyKey = () => {
+    if (!generated) return;
+    navigator.clipboard?.writeText(generated.key).then(() => flash("Clave copiada"));
+  };
+
+  const revoke = (id: string, name: string) => {
+    if (!confirm(`¿Desvincular el dispositivo de ${name}?`)) return;
+    setDevices((prev) => prev.filter((d) => d.id !== id));
+    flash("Dispositivo desvinculado (demo)");
   };
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Docentes</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Dispositivos</h1>
           <p className="text-slate-500 text-sm mt-1">
-            {teachers.length} docentes ·{" "}
-            {teachers.filter((t) => t.devices > 0).length} con dispositivo vinculado
+            Activación con <strong>clave</strong> (sin código QR). Tú generas la clave y se la das al docente.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin/dispositivos"
-            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            Generar código de activación
-          </Link>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            + Agregar docente
-          </button>
-        </div>
+        <button
+          onClick={openGenerate}
+          className="px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700"
+        >
+          + Generar clave de activación
+        </button>
       </div>
 
       {message && (
@@ -125,145 +110,115 @@ export default function DocentesPage() {
         </div>
       )}
 
-      <p className="text-xs text-slate-400 mb-4">
-        Demo: los cambios se ven aquí, pero al recargar la página se restablecen. Cuando conectemos la base de datos quedarán guardados.
-      </p>
-
-      {/* Modal agregar */}
-      {showAdd && (
+      {showGenerate && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Agregar docente</h2>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre completo</label>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-3 focus:outline-none focus:border-primary-500"
-              placeholder="Ej. Juan Pérez García"
-            />
-            <label className="block text-sm font-medium text-slate-700 mb-1">Código (opcional)</label>
-            <input
-              value={newCode}
-              onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-4 focus:outline-none focus:border-primary-500"
-              placeholder="DOC014"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAdd(false)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={addTeacher}
-                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
-              >
-                Guardar
-              </button>
-            </div>
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Generar clave de activación</h2>
+
+            {!generated ? (
+              <>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Docente</label>
+                <select
+                  value={selectedTeacher}
+                  onChange={(e) => setSelectedTeacher(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-3 bg-white"
+                >
+                  <option value="">— Elegir docente —</option>
+                  {TEACHERS_WITHOUT.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Clave (opcional: escribe la tuya o déjala vacía para generar una)
+                </label>
+                <input
+                  value={customKey}
+                  onChange={(e) =>
+                    setCustomKey(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))
+                  }
+                  placeholder="Ej. PROF07"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-4 font-mono tracking-wider"
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowGenerate(false)}
+                    className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={generate}
+                    className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
+                  >
+                    Generar clave
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="text-center">
+                <p className="text-sm text-slate-500 mb-2">
+                  Clave para <strong>{generated.teacher}</strong>
+                </p>
+                <div className="bg-slate-100 rounded-xl py-6 mb-3">
+                  <p className="text-4xl font-mono font-bold tracking-widest text-primary-800">
+                    {generated.key}
+                  </p>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  Válida hasta las {generated.expiresAt} (30 minutos en demo)
+                </p>
+                <p className="text-sm text-slate-600 mb-4">
+                  El docente abre la app → Activar dispositivo → escribe esta clave.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={copyKey}
+                    className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
+                  >
+                    Copiar clave
+                  </button>
+                  <button
+                    onClick={() => setShowGenerate(false)}
+                    className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Modal editar */}
-      {editId && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-4">Editar docente</h2>
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-4 focus:outline-none focus:border-primary-500"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setEditId(null)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={saveEdit}
-                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Código</th>
-                <th className="text-left px-4 py-3 font-medium">Nombre</th>
-                <th className="text-center px-4 py-3 font-medium">Dispositivos</th>
-                <th className="text-center px-4 py-3 font-medium">Estado</th>
+                <th className="text-left px-4 py-3 font-medium">Docente</th>
+                <th className="text-left px-4 py-3 font-medium">Dispositivo</th>
+                <th className="text-left px-4 py-3 font-medium">Activado</th>
+                <th className="text-left px-4 py-3 font-medium">Último uso</th>
                 <th className="text-right px-4 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {teachers.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-mono text-slate-500">{t.code}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{t.name}</td>
-                  <td className="px-4 py-3 text-center">
-                    {t.devices > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-success-600 font-medium">
-                        <span className="w-2 h-2 bg-success-500 rounded-full" />
-                        {t.devices}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">Sin vincular</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
+              {devices.map((d) => (
+                <tr key={d.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{d.teacher}</td>
+                  <td className="px-4 py-3 text-slate-600">{d.deviceName}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.activatedAt}</td>
+                  <td className="px-4 py-3 text-slate-500">{d.lastSeen}</td>
+                  <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => toggleActive(t.id)}
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        t.active
-                          ? "bg-success-100 text-success-700"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {t.active ? "Activo" : "Inactivo"}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                    <button
-                      onClick={() => {
-                        setEditId(t.id);
-                        setEditName(t.name);
-                      }}
-                      className="text-primary-600 text-xs font-medium hover:underline"
-                    >
-                      Editar
-                    </button>
-                    {t.devices > 0 && (
-                      <button
-                        onClick={() => unlinkDevice(t.id)}
-                        className="text-warning-600 text-xs font-medium hover:underline"
-                      >
-                        Desvincular
-                      </button>
-                    )}
-                    {t.devices === 0 && (
-                      <Link
-                        href="/admin/dispositivos"
-                        className="text-success-600 text-xs font-medium hover:underline"
-                      >
-                        Vincular
-                      </Link>
-                    )}
-                    <button
-                      onClick={() => removeTeacher(t.id, t.name)}
+                      onClick={() => revoke(d.id, d.teacher)}
                       className="text-danger-600 text-xs font-medium hover:underline"
                     >
-                      Eliminar
+                      Desvincular
                     </button>
                   </td>
                 </tr>
@@ -271,7 +226,23 @@ export default function DocentesPage() {
             </tbody>
           </table>
         </div>
+        {devices.length === 0 && (
+          <div className="text-center py-10 text-slate-400 text-sm">No hay dispositivos vinculados.</div>
+        )}
       </div>
+
+      {TEACHERS_WITHOUT.length > 0 && (
+        <div className="bg-warning-50 border border-warning-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-warning-700 mb-2">
+            Docentes sin dispositivo (puedes generarles clave)
+          </h3>
+          <ul className="text-sm text-warning-600 space-y-1">
+            {TEACHERS_WITHOUT.map((t) => (
+              <li key={t}>• {t}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

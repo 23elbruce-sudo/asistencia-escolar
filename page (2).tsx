@@ -100,7 +100,7 @@ export default function BitacoraPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Bitácora de correcciones</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Historial de cambios realizados por el administrador principal sobre registros cerrados
+          Historial de correcciones del Director sobre registros cerrados · Quién, cuándo, antes → después y motivo · Demo
         </p>
       </div>
 

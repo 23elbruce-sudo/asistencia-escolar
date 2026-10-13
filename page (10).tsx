@@ -1,133 +1,249 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { getAdminRole } from "@/lib/roles";
 
-export default function ActivarDispositivoPage() {
+type ImportType = "alumnos" | "docentes" | "horarios" | null;
+
+type ValidationRow = {
+  line: number;
+  status: "ok" | "error" | "warning";
+  message: string;
+};
+
+const TYPE_INFO: Record<
+  Exclude<ImportType, null>,
+  { title: string; icon: string; columns: string; note: string }
+> = {
+  alumnos: {
+    title: "Alumnos",
+    icon: "👨‍🎓",
+    columns: "Matrícula, Nombre, Grado, Grupo (solo 1°A–3°B)",
+    note: "Los grupos deben ser uno de los 6 oficiales.",
+  },
+  docentes: {
+    title: "Docentes y materias",
+    icon: "👨‍🏫",
+    columns: "Nombre del docente, Materia(s) que imparte",
+    note: "Con esto la plataforma sabe qué docente da cada materia. El grupo se define en el horario.",
+  },
+  horarios: {
+    title: "Horarios (grupos y materias)",
+    icon: "🗓️",
+    columns: "Día, Periodo, Materia, Grado, Grupo",
+    note: "Se cruza con la lista de docentes+materias para asignar automáticamente el docente.",
+  },
+};
+
+export default function ImportarPage() {
   const router = useRouter();
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [allowed, setAllowed] = useState(false);
+  const [importType, setImportType] = useState<ImportType>(null);
+  const [fileName, setFileName] = useState("");
+  const [validating, setValidating] = useState(false);
+  const [results, setResults] = useState<ValidationRow[] | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleActivate = async () => {
-    if (code.trim().length < 6) {
-      setError("Ingresa la clave de activación");
+  useEffect(() => {
+    if (getAdminRole() !== "director") {
+      router.replace("/admin");
       return;
     }
+    setAllowed(true);
+  }, [router]);
 
-    setLoading(true);
-    setError("");
-
-    try {
-      // TODO: Llamar a la API real cuando esté conectada a Supabase
-      // Por ahora simulamos la activación para desarrollo
-      await new Promise((r) => setTimeout(r, 800));
-
-      // Generar token de dispositivo y guardarlo
-      const token =
-        "dev_" +
-        Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-
-      localStorage.setItem("device_token", token);
-      localStorage.setItem("teacher_name", "Javier Sánchez González");
-
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/docente");
-      }, 1500);
-    } catch {
-      setError("Código inválido o expirado. Solicita uno nuevo al administrador.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (success) {
+  if (!allowed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-success-50 p-6">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-success-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={3}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-success-700 mb-2">
-            ¡Dispositivo activado!
-          </h2>
-          <p className="text-success-600">Redirigiendo...</p>
-        </div>
+      <div className="p-8 flex justify-center">
+        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    setResults(null);
+    setConfirmed(false);
+  };
+
+  const analyze = async () => {
+    if (!fileName || !importType) return;
+    setValidating(true);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    if (importType === "alumnos") {
+      setResults([
+        { line: 1, status: "ok", message: "Ana García López — 1° A" },
+        { line: 2, status: "ok", message: "Carlos Mendoza — 1° A" },
+        { line: 3, status: "warning", message: "Matrícula ya existe (se actualizará)" },
+        { line: 4, status: "error", message: "Grupo inválido: 4° C (solo se permiten 1°A–3°B)" },
+        { line: 5, status: "ok", message: "Fernanda Torres — 2° B" },
+      ]);
+    } else if (importType === "docentes") {
+      setResults([
+        { line: 1, status: "ok", message: "Javier Sánchez González → Historia" },
+        { line: 2, status: "ok", message: "María López Hernández → Matemáticas" },
+        { line: 3, status: "ok", message: "Ana Ruiz Morales → Ciencias, Biología" },
+        { line: 4, status: "warning", message: "Materia nueva: se creará 'Geografía'" },
+        { line: 5, status: "error", message: "Fila sin nombre de docente" },
+      ]);
+    } else {
+      setResults([
+        { line: 1, status: "ok", message: "Lunes P1 · Historia · 2° A → docente: J. Sánchez" },
+        { line: 2, status: "ok", message: "Lunes P1 · Matemáticas · 1° B → docente: M. López" },
+        { line: 3, status: "error", message: "Materia 'Latín' sin docente asignado en la lista de docentes" },
+        { line: 4, status: "error", message: "Grupo inválido: 4° A" },
+        { line: 5, status: "warning", message: "Dos docentes dan 'Inglés': se usará el primero; revisa si es correcto" },
+        { line: 6, status: "ok", message: "Martes P2 · Ciencias · 3° A → docente: A. Ruiz" },
+      ]);
+    }
+    setValidating(false);
+  };
+
+  const confirmImport = () => setConfirmed(true);
+
+  const reset = () => {
+    setImportType(null);
+    setFileName("");
+    setResults(null);
+    setConfirmed(false);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const okCount = results?.filter((r) => r.status === "ok").length ?? 0;
+  const errorCount = results?.filter((r) => r.status === "error").length ?? 0;
+  const warnCount = results?.filter((r) => r.status === "warning").length ?? 0;
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-primary-800 text-white px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <Link href="/" className="text-primary-200 hover:text-white">
-            ← Volver
-          </Link>
-          <h1 className="font-semibold text-lg">Activar dispositivo</h1>
+    <div className="p-4 md:p-8 max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Importar Excel</h1>
+        <p className="text-slate-500 text-sm mt-1">
+          Carga alumnos, docentes con sus materias, o horarios. Solo grupos 1°A–3°B.
+        </p>
+      </div>
+
+      {!importType && (
+        <div className="space-y-3">
+          {(Object.keys(TYPE_INFO) as Exclude<ImportType, null>[]).map((key) => {
+            const info = TYPE_INFO[key];
+            return (
+              <button
+                key={key}
+                onClick={() => setImportType(key)}
+                className="w-full bg-white border border-slate-200 rounded-xl p-5 text-left hover:border-primary-400 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{info.icon}</span>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">{info.title}</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Columnas: {info.columns}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">{info.note}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      </header>
+      )}
 
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-2 text-center">
-              Código de activación
-            </h2>
-            <p className="text-sm text-slate-500 mb-6 text-center">
-              Pide al administrador la clave de activación de 6 caracteres
-              para vincular este dispositivo.
+      {importType && !results && !confirmed && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <button onClick={reset} className="text-sm text-slate-400 hover:text-slate-600 mb-4">
+            ← Cambiar tipo
+          </button>
+          <h2 className="font-semibold text-slate-800 mb-1">{TYPE_INFO[importType].title}</h2>
+          <p className="text-sm text-slate-500 mb-2">
+            Columnas: {TYPE_INFO[importType].columns}
+          </p>
+          <p className="text-xs text-slate-400 mb-6">{TYPE_INFO[importType].note}</p>
+
+          <div
+            onClick={() => fileRef.current?.click()}
+            className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 transition-colors"
+          >
+            <p className="text-slate-500 text-sm">
+              {fileName || "Haz clic para seleccionar el archivo Excel (.xlsx)"}
             </p>
-
-            <input
-              type="text"
-              value={code}
-              onChange={(e) =>
-                setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
-              }
-              maxLength={6}
-              placeholder="ABC123"
-              className="w-full text-center text-2xl font-mono tracking-widest py-4 px-4 border-2 border-slate-200 rounded-xl focus:border-primary-500 focus:outline-none mb-4"
-              autoFocus
-            />
-
-            {error && (
-              <p className="text-danger-600 text-sm text-center mb-4">{error}</p>
-            )}
-
-            <button
-              onClick={handleActivate}
-              disabled={loading || code.length < 6}
-              className="w-full py-4 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? "Activando..." : "Activar dispositivo"}
-            </button>
+            {fileName && <p className="text-primary-600 text-sm font-medium mt-1">{fileName}</p>}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
           </div>
 
-          <p className="text-center text-xs text-slate-400 mt-6">
-            Una vez activado, este dispositivo quedará asociado permanentemente
-            al docente hasta que el administrador lo desvincule.
-          </p>
+          <button
+            onClick={analyze}
+            disabled={!fileName || validating}
+            className="w-full mt-4 py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50"
+          >
+            {validating ? "Analizando..." : "Analizar archivo"}
+          </button>
         </div>
-      </main>
+      )}
+
+      {results && !confirmed && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h2 className="font-semibold text-slate-800 mb-4">Resultado del análisis</h2>
+          <div className="flex gap-4 mb-4 text-sm">
+            <span className="text-success-600 font-medium">✓ {okCount} válidas</span>
+            <span className="text-warning-600 font-medium">⚠ {warnCount} advertencias</span>
+            <span className="text-danger-600 font-medium">✕ {errorCount} errores</span>
+          </div>
+          <div className="max-h-64 overflow-y-auto border border-slate-100 rounded-lg divide-y mb-6">
+            {results.map((r) => (
+              <div key={r.line} className="flex items-start gap-3 px-3 py-2 text-sm">
+                <span
+                  className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${
+                    r.status === "ok"
+                      ? "bg-success-500"
+                      : r.status === "warning"
+                      ? "bg-warning-500"
+                      : "bg-danger-500"
+                  }`}
+                >
+                  {r.status === "ok" ? "✓" : r.status === "warning" ? "!" : "✕"}
+                </span>
+                <div>
+                  <span className="text-slate-400 text-xs">Fila {r.line}: </span>
+                  <span className="text-slate-700">{r.message}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={reset} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium">
+              Cancelar
+            </button>
+            <button
+              onClick={confirmImport}
+              disabled={okCount + warnCount === 0}
+              className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+            >
+              Confirmar ({okCount + warnCount} filas)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmed && (
+        <div className="bg-success-50 border border-success-200 rounded-xl p-8 text-center">
+          <div className="text-3xl mb-3">✓</div>
+          <h2 className="text-lg font-bold text-success-700 mb-2">Importación simulada</h2>
+          <p className="text-sm text-success-600 mb-6">
+            En la demo no se guarda en base de datos. Cuando conectemos Supabase, aquí se guardará de verdad.
+          </p>
+          <button
+            onClick={reset}
+            className="px-6 py-2.5 bg-success-600 text-white rounded-lg text-sm font-semibold"
+          >
+            Importar otro archivo
+          </button>
+        </div>
+      )}
     </div>
   );
 }

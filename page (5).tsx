@@ -1,158 +1,293 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getAdminRole } from "@/lib/roles";
 
-const GROUPS = ["Toda la escuela", "1° A", "1° B", "2° A", "2° B", "3° A", "3° B"];
+type Teacher = {
+  id: string;
+  code: string;
+  name: string;
+  devices: number;
+  active: boolean;
+};
 
-const WEEKLY_DATA = [
-  { day: "Lun", absent: 12, late: 8 },
-  { day: "Mar", absent: 9, late: 11 },
-  { day: "Mié", absent: 15, late: 6 },
-  { day: "Jue", absent: 7, late: 9 },
-  { day: "Vie", absent: 18, late: 14 },
+const INITIAL: Teacher[] = [
+  { id: "1", code: "DOC001", name: "Javier Sánchez González", devices: 1, active: true },
+  { id: "2", code: "DOC002", name: "María López Hernández", devices: 1, active: true },
+  { id: "3", code: "DOC003", name: "Roberto Hernández Díaz", devices: 0, active: true },
+  { id: "4", code: "DOC004", name: "Ana Ruiz Morales", devices: 1, active: true },
+  { id: "5", code: "DOC005", name: "Carlos Méndez Soto", devices: 1, active: true },
+  { id: "6", code: "DOC006", name: "Patricia Gómez Vargas", devices: 0, active: true },
+  { id: "7", code: "DOC007", name: "Luis Fernando Torres", devices: 1, active: true },
+  { id: "8", code: "DOC008", name: "Elena Ramírez Cruz", devices: 0, active: false },
+  { id: "9", code: "DOC009", name: "Miguel Ángel Castillo", devices: 1, active: true },
+  { id: "10", code: "DOC010", name: "Sofía Herrera Luna", devices: 1, active: true },
+  { id: "11", code: "DOC011", name: "Diego Morales Peña", devices: 0, active: true },
+  { id: "12", code: "DOC012", name: "Carmen Núñez Ortiz", devices: 1, active: true },
+  { id: "13", code: "DOC013", name: "Andrés Vargas Ríos", devices: 1, active: true },
 ];
 
-const GROUP_STATS = [
-  { group: "1° A", absent: 22, late: 15, classes: 40 },
-  { group: "1° B", absent: 18, late: 12, classes: 40 },
-  { group: "2° A", absent: 31, late: 20, classes: 40 },
-  { group: "2° B", absent: 14, late: 9, classes: 40 },
-  { group: "3° A", absent: 25, late: 17, classes: 40 },
-  { group: "3° B", absent: 19, late: 11, classes: 40 },
-];
+export default function DocentesPage() {
+  const router = useRouter();
+  const [allowed, setAllowed] = useState(false);
+  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [message, setMessage] = useState("");
 
-export default function EstadisticasPage() {
-  const [period, setPeriod] = useState<"semana" | "mes">("semana");
-  const [group, setGroup] = useState("Toda la escuela");
+  useEffect(() => {
+    if (getAdminRole() !== "director") {
+      router.replace("/admin");
+      return;
+    }
+    setAllowed(true);
+  }, [router]);
 
-  const totalAbsent = GROUP_STATS.reduce((a, g) => a + g.absent, 0);
-  const totalLate = GROUP_STATS.reduce((a, g) => a + g.late, 0);
-  const maxVal = Math.max(...WEEKLY_DATA.map((d) => Math.max(d.absent, d.late)));
+  const flash = (msg: string) => {
+    setMessage(msg);
+    setTimeout(() => setMessage(""), 2500);
+  };
+
+  const removeTeacher = (id: string, name: string) => {
+    if (!confirm(`¿Eliminar a ${name}? (solo en esta demo; al recargar vuelve a aparecer)`)) return;
+    setTeachers((prev) => prev.filter((t) => t.id !== id));
+    flash("Docente eliminado de la lista (demo)");
+  };
+
+  const toggleActive = (id: string) => {
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t))
+    );
+    flash("Estado actualizado (demo)");
+  };
+
+  const unlinkDevice = (id: string) => {
+    if (!confirm("¿Desvincular el dispositivo de este docente?")) return;
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, devices: 0 } : t))
+    );
+    flash("Dispositivo desvinculado (demo)");
+  };
+
+  const addTeacher = () => {
+    if (!newName.trim()) {
+      alert("Escribe el nombre del docente");
+      return;
+    }
+    const code = newCode.trim() || `DOC${String(teachers.length + 1).padStart(3, "0")}`;
+    setTeachers((prev) => [
+      ...prev,
+      {
+        id: String(Date.now()),
+        code,
+        name: newName.trim(),
+        devices: 0,
+        active: true,
+      },
+    ]);
+    setNewName("");
+    setNewCode("");
+    setShowAdd(false);
+    flash("Docente agregado (demo)");
+  };
+
+  const saveEdit = () => {
+    if (!editId || !editName.trim()) return;
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === editId ? { ...t, name: editName.trim() } : t))
+    );
+    setEditId(null);
+    flash("Nombre actualizado (demo)");
+  };
+
+  if (!allowed) {
+    return (
+      <div className="p-8 flex justify-center">
+        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Estadísticas</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Ausencias y tardanzas separadas. Datos de demostración.
-        </p>
-      </div>
-
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPeriod("semana")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              period === "semana"
-                ? "bg-primary-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600"
-            }`}
-          >
-            Semanal
-          </button>
-          <button
-            onClick={() => setPeriod("mes")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              period === "mes"
-                ? "bg-primary-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600"
-            }`}
-          >
-            Mensual
-          </button>
-        </div>
-        <select
-          value={group}
-          onChange={(e) => setGroup(e.target.value)}
-          className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500"
-        >
-          {GROUPS.map((g) => (
-            <option key={g} value={g}>
-              {g}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Totales */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Ausencias</p>
-          <p className="text-3xl font-bold text-danger-600 mt-1">{totalAbsent}</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {period === "semana" ? "Esta semana" : "Este mes"}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Docentes</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {teachers.length} docentes ·{" "}
+            {teachers.filter((t) => t.devices > 0).length} con dispositivo vinculado
           </p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Tardanzas</p>
-          <p className="text-3xl font-bold text-warning-600 mt-1">{totalLate}</p>
-          <p className="text-xs text-slate-400 mt-1">
-            {period === "semana" ? "Esta semana" : "Este mes"}
-          </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/dispositivos"
+            className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Generar código de activación
+          </Link>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="px-4 py-2.5 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            + Agregar docente
+          </button>
         </div>
       </div>
 
-      {/* Gráfica simple por día */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-8">
-        <h2 className="font-semibold text-slate-700 mb-4">
-          Por día de la semana
-        </h2>
-        <div className="flex items-end gap-3 h-40">
-          {WEEKLY_DATA.map((d) => (
-            <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex gap-0.5 items-end justify-center h-28">
-                <div
-                  className="w-3 sm:w-4 bg-danger-400 rounded-t"
-                  style={{ height: `${(d.absent / maxVal) * 100}%` }}
-                  title={`Ausencias: ${d.absent}`}
-                />
-                <div
-                  className="w-3 sm:w-4 bg-warning-400 rounded-t"
-                  style={{ height: `${(d.late / maxVal) * 100}%` }}
-                  title={`Tardanzas: ${d.late}`}
-                />
-              </div>
-              <span className="text-xs text-slate-500">{d.day}</span>
+      {message && (
+        <div className="mb-4 px-4 py-3 bg-success-50 border border-success-200 text-success-700 text-sm rounded-lg">
+          {message}
+        </div>
+      )}
+
+      <p className="text-xs text-slate-400 mb-4">
+        Demo: los cambios se ven aquí, pero al recargar la página se restablecen. Cuando conectemos la base de datos quedarán guardados.
+      </p>
+
+      {/* Modal agregar */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Agregar docente</h2>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre completo</label>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-3 focus:outline-none focus:border-primary-500"
+              placeholder="Ej. Juan Pérez García"
+            />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Código (opcional)</label>
+            <input
+              value={newCode}
+              onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-4 focus:outline-none focus:border-primary-500"
+              placeholder="DOC014"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAdd(false)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={addTeacher}
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
+              >
+                Guardar
+              </button>
             </div>
-          ))}
+          </div>
         </div>
-        <div className="flex gap-4 mt-3 text-xs text-slate-500">
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-danger-400 rounded" /> Ausencias
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-warning-400 rounded" /> Tardanzas
-          </span>
-        </div>
-      </div>
+      )}
 
-      {/* Por grupo */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-700">Por grupo</h2>
+      {/* Modal editar */}
+      {editId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-4">Editar docente</h2>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm mb-4 focus:outline-none focus:border-primary-500"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditId(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveEdit}
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-lg text-sm font-semibold"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Grupo</th>
-                <th className="text-center px-4 py-3 font-medium">Ausencias</th>
-                <th className="text-center px-4 py-3 font-medium">Tardanzas</th>
-                <th className="text-center px-4 py-3 font-medium">Clases</th>
+                <th className="text-left px-4 py-3 font-medium">Código</th>
+                <th className="text-left px-4 py-3 font-medium">Nombre</th>
+                <th className="text-center px-4 py-3 font-medium">Dispositivos</th>
+                <th className="text-center px-4 py-3 font-medium">Estado</th>
+                <th className="text-right px-4 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {GROUP_STATS.map((g) => (
-                <tr key={g.group} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{g.group}</td>
-                  <td className="px-4 py-3 text-center text-danger-600 font-medium">
-                    {g.absent}
+              {teachers.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-mono text-slate-500">{t.code}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{t.name}</td>
+                  <td className="px-4 py-3 text-center">
+                    {t.devices > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-success-600 font-medium">
+                        <span className="w-2 h-2 bg-success-500 rounded-full" />
+                        {t.devices}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Sin vincular</span>
+                    )}
                   </td>
-                  <td className="px-4 py-3 text-center text-warning-600 font-medium">
-                    {g.late}
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => toggleActive(t.id)}
+                      className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        t.active
+                          ? "bg-success-100 text-success-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {t.active ? "Activo" : "Inactivo"}
+                    </button>
                   </td>
-                  <td className="px-4 py-3 text-center text-slate-500">{g.classes}</td>
+                  <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                    <button
+                      onClick={() => {
+                        setEditId(t.id);
+                        setEditName(t.name);
+                      }}
+                      className="text-primary-600 text-xs font-medium hover:underline"
+                    >
+                      Editar
+                    </button>
+                    {t.devices > 0 && (
+                      <button
+                        onClick={() => unlinkDevice(t.id)}
+                        className="text-warning-600 text-xs font-medium hover:underline"
+                      >
+                        Desvincular
+                      </button>
+                    )}
+                    {t.devices === 0 && (
+                      <Link
+                        href="/admin/dispositivos"
+                        className="text-success-600 text-xs font-medium hover:underline"
+                      >
+                        Vincular
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => removeTeacher(t.id, t.name)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-danger-600 hover:bg-danger-50"
+                      title="Eliminar docente"
+                      aria-label="Eliminar"
+                    >
+                      🗑️
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

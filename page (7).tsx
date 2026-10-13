@@ -1,229 +1,164 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 
-type ImportType = "alumnos" | "docentes" | "horarios" | null;
+const GROUPS = ["Toda la escuela", "1° A", "1° B", "2° A", "2° B", "3° A", "3° B"];
 
-type ValidationRow = {
-  line: number;
-  status: "ok" | "error" | "warning";
-  message: string;
-};
+const WEEKLY_DATA = [
+  { day: "Lun", absent: 12, late: 8 },
+  { day: "Mar", absent: 9, late: 11 },
+  { day: "Mié", absent: 15, late: 6 },
+  { day: "Jue", absent: 7, late: 9 },
+  { day: "Vie", absent: 18, late: 14 },
+];
 
-const TYPE_INFO: Record<
-  Exclude<ImportType, null>,
-  { title: string; icon: string; columns: string; note: string }
-> = {
-  alumnos: {
-    title: "Alumnos",
-    icon: "👨‍🎓",
-    columns: "Matrícula, Nombre, Grado, Grupo (solo 1°A–3°B)",
-    note: "Los grupos deben ser uno de los 6 oficiales.",
-  },
-  docentes: {
-    title: "Docentes y materias",
-    icon: "👨‍🏫",
-    columns: "Nombre del docente, Materia(s) que imparte",
-    note: "Con esto la plataforma sabe qué docente da cada materia. El grupo se define en el horario.",
-  },
-  horarios: {
-    title: "Horarios (grupos y materias)",
-    icon: "🗓️",
-    columns: "Día, Periodo, Materia, Grado, Grupo",
-    note: "Se cruza con la lista de docentes+materias para asignar automáticamente el docente.",
-  },
-};
+const GROUP_STATS = [
+  { group: "1° A", absent: 22, late: 15, classes: 40 },
+  { group: "1° B", absent: 18, late: 12, classes: 40 },
+  { group: "2° A", absent: 31, late: 20, classes: 40 },
+  { group: "2° B", absent: 14, late: 9, classes: 40 },
+  { group: "3° A", absent: 25, late: 17, classes: 40 },
+  { group: "3° B", absent: 19, late: 11, classes: 40 },
+];
 
-export default function ImportarPage() {
-  const [importType, setImportType] = useState<ImportType>(null);
-  const [fileName, setFileName] = useState("");
-  const [validating, setValidating] = useState(false);
-  const [results, setResults] = useState<ValidationRow[] | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+export default function EstadisticasPage() {
+  const [period, setPeriod] = useState<"semana" | "mes">("semana");
+  const [group, setGroup] = useState("Toda la escuela");
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setResults(null);
-    setConfirmed(false);
-  };
-
-  const analyze = async () => {
-    if (!fileName || !importType) return;
-    setValidating(true);
-    await new Promise((r) => setTimeout(r, 1000));
-
-    if (importType === "alumnos") {
-      setResults([
-        { line: 1, status: "ok", message: "Ana García López — 1° A" },
-        { line: 2, status: "ok", message: "Carlos Mendoza — 1° A" },
-        { line: 3, status: "warning", message: "Matrícula ya existe (se actualizará)" },
-        { line: 4, status: "error", message: "Grupo inválido: 4° C (solo se permiten 1°A–3°B)" },
-        { line: 5, status: "ok", message: "Fernanda Torres — 2° B" },
-      ]);
-    } else if (importType === "docentes") {
-      setResults([
-        { line: 1, status: "ok", message: "Javier Sánchez González → Historia" },
-        { line: 2, status: "ok", message: "María López Hernández → Matemáticas" },
-        { line: 3, status: "ok", message: "Ana Ruiz Morales → Ciencias, Biología" },
-        { line: 4, status: "warning", message: "Materia nueva: se creará 'Geografía'" },
-        { line: 5, status: "error", message: "Fila sin nombre de docente" },
-      ]);
-    } else {
-      setResults([
-        { line: 1, status: "ok", message: "Lunes P1 · Historia · 2° A → docente: J. Sánchez" },
-        { line: 2, status: "ok", message: "Lunes P1 · Matemáticas · 1° B → docente: M. López" },
-        { line: 3, status: "error", message: "Materia 'Latín' sin docente asignado en la lista de docentes" },
-        { line: 4, status: "error", message: "Grupo inválido: 4° A" },
-        { line: 5, status: "warning", message: "Dos docentes dan 'Inglés': se usará el primero; revisa si es correcto" },
-        { line: 6, status: "ok", message: "Martes P2 · Ciencias · 3° A → docente: A. Ruiz" },
-      ]);
-    }
-    setValidating(false);
-  };
-
-  const confirmImport = () => setConfirmed(true);
-
-  const reset = () => {
-    setImportType(null);
-    setFileName("");
-    setResults(null);
-    setConfirmed(false);
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const okCount = results?.filter((r) => r.status === "ok").length ?? 0;
-  const errorCount = results?.filter((r) => r.status === "error").length ?? 0;
-  const warnCount = results?.filter((r) => r.status === "warning").length ?? 0;
+  const totalAbsent = GROUP_STATS.reduce((a, g) => a + g.absent, 0);
+  const totalLate = GROUP_STATS.reduce((a, g) => a + g.late, 0);
+  const maxVal = Math.max(...WEEKLY_DATA.map((d) => Math.max(d.absent, d.late)));
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Importar Excel</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Estadísticas</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Carga alumnos, docentes con sus materias, o horarios. Solo grupos 1°A–3°B.
+          Ausencias y tardanzas separadas. Datos de demostración.
         </p>
       </div>
 
-      {!importType && (
-        <div className="space-y-3">
-          {(Object.keys(TYPE_INFO) as Exclude<ImportType, null>[]).map((key) => {
-            const info = TYPE_INFO[key];
-            return (
-              <button
-                key={key}
-                onClick={() => setImportType(key)}
-                className="w-full bg-white border border-slate-200 rounded-xl p-5 text-left hover:border-primary-400 hover:shadow-md transition-all"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">{info.icon}</span>
-                  <div>
-                    <h3 className="font-semibold text-slate-800">{info.title}</h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Columnas: {info.columns}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">{info.note}</p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {importType && !results && !confirmed && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <button onClick={reset} className="text-sm text-slate-400 hover:text-slate-600 mb-4">
-            ← Cambiar tipo
-          </button>
-          <h2 className="font-semibold text-slate-800 mb-1">{TYPE_INFO[importType].title}</h2>
-          <p className="text-sm text-slate-500 mb-2">
-            Columnas: {TYPE_INFO[importType].columns}
-          </p>
-          <p className="text-xs text-slate-400 mb-6">{TYPE_INFO[importType].note}</p>
-
-          <div
-            onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 transition-colors"
-          >
-            <p className="text-slate-500 text-sm">
-              {fileName || "Haz clic para seleccionar el archivo Excel (.xlsx)"}
-            </p>
-            {fileName && <p className="text-primary-600 text-sm font-medium mt-1">{fileName}</p>}
-            <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
-          </div>
-
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex gap-2">
           <button
-            onClick={analyze}
-            disabled={!fileName || validating}
-            className="w-full mt-4 py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 disabled:opacity-50"
+            onClick={() => setPeriod("semana")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              period === "semana"
+                ? "bg-primary-600 text-white"
+                : "bg-white border border-slate-200 text-slate-600"
+            }`}
           >
-            {validating ? "Analizando..." : "Analizar archivo"}
+            Semanal
+          </button>
+          <button
+            onClick={() => setPeriod("mes")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              period === "mes"
+                ? "bg-primary-600 text-white"
+                : "bg-white border border-slate-200 text-slate-600"
+            }`}
+          >
+            Mensual
           </button>
         </div>
-      )}
+        <select
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-primary-500"
+        >
+          {GROUPS.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {results && !confirmed && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-800 mb-4">Resultado del análisis</h2>
-          <div className="flex gap-4 mb-4 text-sm">
-            <span className="text-success-600 font-medium">✓ {okCount} válidas</span>
-            <span className="text-warning-600 font-medium">⚠ {warnCount} advertencias</span>
-            <span className="text-danger-600 font-medium">✕ {errorCount} errores</span>
-          </div>
-          <div className="max-h-64 overflow-y-auto border border-slate-100 rounded-lg divide-y mb-6">
-            {results.map((r) => (
-              <div key={r.line} className="flex items-start gap-3 px-3 py-2 text-sm">
-                <span
-                  className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${
-                    r.status === "ok"
-                      ? "bg-success-500"
-                      : r.status === "warning"
-                      ? "bg-warning-500"
-                      : "bg-danger-500"
-                  }`}
-                >
-                  {r.status === "ok" ? "✓" : r.status === "warning" ? "!" : "✕"}
-                </span>
-                <div>
-                  <span className="text-slate-400 text-xs">Fila {r.line}: </span>
-                  <span className="text-slate-700">{r.message}</span>
-                </div>
+      {/* Totales */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Ausencias</p>
+          <p className="text-3xl font-bold text-danger-600 mt-1">{totalAbsent}</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {period === "semana" ? "Esta semana" : "Este mes"}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-xs text-slate-500 uppercase tracking-wide">Tardanzas</p>
+          <p className="text-3xl font-bold text-warning-600 mt-1">{totalLate}</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {period === "semana" ? "Esta semana" : "Este mes"}
+          </p>
+        </div>
+      </div>
+
+      {/* Gráfica simple por día */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-8">
+        <h2 className="font-semibold text-slate-700 mb-4">
+          Por día de la semana
+        </h2>
+        <div className="flex items-end gap-3 h-40">
+          {WEEKLY_DATA.map((d) => (
+            <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full flex gap-0.5 items-end justify-center h-28">
+                <div
+                  className="w-3 sm:w-4 bg-danger-400 rounded-t"
+                  style={{ height: `${(d.absent / maxVal) * 100}%` }}
+                  title={`Ausencias: ${d.absent}`}
+                />
+                <div
+                  className="w-3 sm:w-4 bg-warning-400 rounded-t"
+                  style={{ height: `${(d.late / maxVal) * 100}%` }}
+                  title={`Tardanzas: ${d.late}`}
+                />
               </div>
-            ))}
-          </div>
-          <div className="flex gap-3">
-            <button onClick={reset} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium">
-              Cancelar
-            </button>
-            <button
-              onClick={confirmImport}
-              disabled={okCount + warnCount === 0}
-              className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
-            >
-              Confirmar ({okCount + warnCount} filas)
-            </button>
-          </div>
+              <span className="text-xs text-slate-500">{d.day}</span>
+            </div>
+          ))}
         </div>
-      )}
+        <div className="flex gap-4 mt-3 text-xs text-slate-500">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 bg-danger-400 rounded" /> Ausencias
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 bg-warning-400 rounded" /> Tardanzas
+          </span>
+        </div>
+      </div>
 
-      {confirmed && (
-        <div className="bg-success-50 border border-success-200 rounded-xl p-8 text-center">
-          <div className="text-3xl mb-3">✓</div>
-          <h2 className="text-lg font-bold text-success-700 mb-2">Importación simulada</h2>
-          <p className="text-sm text-success-600 mb-6">
-            En la demo no se guarda en base de datos. Cuando conectemos Supabase, aquí se guardará de verdad.
-          </p>
-          <button
-            onClick={reset}
-            className="px-6 py-2.5 bg-success-600 text-white rounded-lg text-sm font-semibold"
-          >
-            Importar otro archivo
-          </button>
+      {/* Por grupo */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-700">Por grupo</h2>
         </div>
-      )}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">Grupo</th>
+                <th className="text-center px-4 py-3 font-medium">Ausencias</th>
+                <th className="text-center px-4 py-3 font-medium">Tardanzas</th>
+                <th className="text-center px-4 py-3 font-medium">Clases</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {GROUP_STATS.map((g) => (
+                <tr key={g.group} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{g.group}</td>
+                  <td className="px-4 py-3 text-center text-danger-600 font-medium">
+                    {g.absent}
+                  </td>
+                  <td className="px-4 py-3 text-center text-warning-600 font-medium">
+                    {g.late}
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-500">{g.classes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
